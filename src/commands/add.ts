@@ -286,15 +286,15 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
           const permanentDir = path.join(
             os.homedir(), '.zivo-skills', 'store', skillName,
           );
+          // 기존 store 디렉토리 정리 후 재생성
+          await fs.rm(permanentDir, { recursive: true, force: true });
           await fs.mkdir(permanentDir, { recursive: true });
           const srcSkillDir = path.join(repoDir, 'skills', skillName);
           const rootSkillMd = path.join(repoDir, 'SKILL.md');
           try {
             await fs.access(srcSkillDir);
-            const files = await fs.readdir(srcSkillDir);
-            for (const file of files) {
-              await fs.copyFile(path.join(srcSkillDir, file), path.join(permanentDir, file));
-            }
+            // 재귀 복사: references/ 등 하위 디렉토리 포함
+            await copyDirRecursive(srcSkillDir, permanentDir);
           } catch {
             try {
               await fs.copyFile(rootSkillMd, path.join(permanentDir, 'SKILL.md'));
@@ -355,4 +355,18 @@ async function removeConflicts(conflicts: string[]): Promise<void> {
       fs.unlink(conflictPath).catch(() => fs.rm(conflictPath, { recursive: true, force: true })),
     ),
   );
+}
+
+async function copyDirRecursive(src: string, dest: string): Promise<void> {
+  const entries = await fs.readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      await fs.mkdir(destPath, { recursive: true });
+      await copyDirRecursive(srcPath, destPath);
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
 }
