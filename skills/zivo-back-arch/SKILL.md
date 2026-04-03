@@ -186,74 +186,140 @@ public interface StoreRepository {
 
 ---
 
-## 2. @NotifyOn - 선언적 알림 발송
+## 2. @NotifyOn - 선언적 워크플로우 트리거
 
-메서드 실행 완료 후 자동으로 알림 이벤트를 발행하는 AOP 어노테이션.
+메서드 실행 완료 후 워크플로우 엔진에 이벤트를 발행하는 AOP 어노테이션. `type`과 `subType`은 **워크플로우의 트리거 조건**이며, 워크플로우 엔진이 이를 수신하여 알림 채널 라우팅(FCM, 카카오, 이메일 등), 후속 작업 실행 등을 처리한다.
+
+### 핵심 규칙
+
+> **모든 `@NotifyOn` / `@NotifyOns`는 반드시 `{Domain}NotifyOnService.java`에서만 사용한다.**
+> UseCase, Service, Controller 등 다른 클래스에 직접 `@NotifyOn`을 붙이지 않는다.
+> 알림 관심사를 비즈니스 로직에서 완전히 분리하기 위한 규칙이다.
 
 ### 파라미터
 
 | 파라미터 | 필수 | 설명 | 예시 |
 |---------|------|------|------|
-| `type` | O | 알림 유형 | `"ESIM"`, `"REVIEW"`, `"RESERVATION"` |
-| `subType` | X | 하위 유형 | `"ORDER_CONFIRMED"`, `"PAYMENT_CANCELLED"` |
+| `type` | O | 워크플로우 트리거 유형 (도메인 단위) | `"ESIM"`, `"REVIEW"`, `"RESERVATION"` |
+| `subType` | X | 워크플로우 트리거 하위 유형 (이벤트 단위) | `"ORDER_CONFIRMED"`, `"PAYMENT_CANCELLED"` |
 | `payload` | X | SpEL 페이로드 추출 | `"#{@esimPayloadBuilder.buildForCreateOrder(#result, #request)}"` |
-| `condition` | X | SpEL 조건식 (빈 문자열=항상) | `"#result != null && #result.status == 'CONFIRMED'"` |
+| `condition` | X | SpEL 조건식 (빈 문자열=항상 발행) | `"#result != null && #result.status == 'CONFIRMED'"` |
+
+`type` + `subType` 조합이 워크플로우 엔진에서 어떤 알림 채널과 템플릿을 사용할지 결정하는 키가 된다. 예를 들어 `type="ESIM"`, `subType="ORDER_CONFIRMED"`이면 워크플로우 엔진이 해당 조합에 설정된 FCM 푸시 + 카카오 알림톡을 발송한다.
 
 ### SpEL 컨텍스트
 
-- `#{result}` - 메서드 리턴 값
-- `#{args[0]}` - 인덱스 기반 파라미터
-- `#{#paramName}` - 이름 기반 파라미터
-- `#{@beanName.method()}` - Spring Bean 호출
+NotifyOnService 메서드의 파라미터와 리턴값을 SpEL에서 직접 참조할 수 있다. 파라미터의 필드에도 `.` 연산자로 접근 가능.
 
-### 기본 사용법
+- `#result` — 메서드 리턴 값 (예: `#result.status`, `#result.simType`)
+- `#paramName` — 이름 기반 파라미터 (예: `#request.stayStartAt`, `#userId`)
+- `#args[0]` — 인덱스 기반 파라미터
+- `@beanName.method()` — Spring Bean 호출 (예: `@esimPayloadBuilder.canScheduleTripReminder(#request.stayStartAt, 'TRIP_D1_USIM')`)
 
-```java
-@NotifyOn(
-    type = "REVIEW",
-    subType = "REVIEW_REPORTED",
-    payload = "#{@reviewPayloadBuilder.buildForReported(#reporterId, #reviewId, #request)}",
-    condition = "#reviewId != null"
-)
-public ReviewReportResponse createReport(Long reporterId, Long reviewId, ReviewReportRequest request) {
-    // 비즈니스 로직만 집중
-}
-```
+복잡한 조건은 PayloadBuilder에 조건 메서드(`canScheduleTripReminder`, `canNotify` 등)를 만들어 SpEL에서 호출하는 것이 가독성에 좋다.
 
-### 복수 알림 (@NotifyOns)
+### {Domain}NotifyOnService 패턴
+
+모든 도메인의 `@NotifyOn`은 해당 도메인의 `NotifyOnService`에 집중한다. 이 서비스는 비즈니스 로직을 포함하지 않고, 전달받은 결과를 그대로 리턴하면서 AOP가 워크플로우 이벤트를 발행하도록 한다.
 
 ```java
-@NotifyOns({
-    @NotifyOn(type = "OPERATION", subType = "PRODUCT_APPROVED",
-              payload = "#{@productPayloadBuilder.buildForApproved(#id)}",
-              condition = "#result != null && #result.serviceStatus.name() == 'APPROVED'"),
-    @NotifyOn(type = "OPERATION", subType = "PRODUCT_REJECTED",
-              payload = "#{@productPayloadBuilder.buildForRejected(#id, #rejectionReason)}",
-              condition = "#result != null && #result.serviceStatus.name() == 'REJECTED'")
-})
-public HospitalServiceDetailResponse updateServiceStatus(Long id, String status, String rejectionReason) { ... }
-```
+// 파일 위치: {도메인}/application/notification/{Domain}NotifyOnService.java
 
-### EsimNotifyOnService 패턴 - 알림 전용 Wrapper Service
-
-비즈니스 로직이 다른 서비스에 있을 때, 알림 발송만 담당하는 얇은 래퍼 서비스를 만든다.
-
-```java
 @Service
 @Transactional
 public class EsimNotifyOnService {
+
+    // 주문 확인 + 여행 스케줄 알림을 동시 트리거
+    // condition에서 #result, #request, #userId 등 메서드 파라미터를 직접 참조
+    // PayloadBuilder의 조건 메서드(canScheduleTripReminder 등)도 SpEL로 호출 가능
     @NotifyOns({
         @NotifyOn(type = "ESIM", subType = "ORDER_CONFIRMED",
                   payload = "#{@esimPayloadBuilder.buildForCreateOrder(#result, #request, #userId)}",
                   condition = "#result != null && #result.status == 'ORDER_CONFIRMED'"),
-        @NotifyOn(type = "ESIM", subType = "TRIP_D7_ESIM",
-                  payload = "#{@esimPayloadBuilder.buildTripSchedulePayload(#result, #request, #userId, 7)}",
-                  condition = "#result != null && ...조건...")
+        @NotifyOn(type = "ESIM", subType = "TRIP_D1_USIM",
+                  payload = "#{@esimPayloadBuilder.buildTripSchedulePayload(#result, #request, #userId, 'TRIP_D1_USIM')}",
+                  condition = "#result != null && #result.status == 'ORDER_CONFIRMED' "
+                      + "&& #request != null && #request.stayStartAt != null "
+                      + "&& #userId != null "
+                      + "&& @esimPayloadBuilder.canScheduleTripReminder(#request.stayStartAt, 'TRIP_D1_USIM')"
+                      + "&& 'U'.equalsIgnoreCase(#result.simType)"),
+        @NotifyOn(type = "ESIM", subType = "TRIP_TODAY_USIM",
+                  payload = "#{@esimPayloadBuilder.buildTripSchedulePayload(#result, #request, #userId, 'TRIP_TODAY_USIM')}",
+                  condition = "#result != null && #result.status == 'ORDER_CONFIRMED' "
+                      + "&& #request != null && #request.stayStartAt != null "
+                      + "&& #userId != null "
+                      + "&& @esimPayloadBuilder.canScheduleTripReminder(#request.stayStartAt, 'TRIP_TODAY_USIM')"
+                      + "&& 'U'.equalsIgnoreCase(#result.simType)")
     })
     public CreateOrderInternalResponse createOrderNotify(
             CreateOrderInternalRequest request, Long userId,
             CreateOrderInternalResponse response) {
-        return response;  // 로직 없이 결과를 그대로 리턴 → AOP가 알림 처리
+        return response;  // 로직 없이 결과를 그대로 리턴 → AOP가 워크플로우 트리거
+    }
+}
+```
+
+```java
+@Service
+@Transactional
+public class ReviewNotifyOnService {
+
+    @NotifyOn(
+        type = "REVIEW",
+        subType = "REVIEW_REPORTED",
+        payload = "#{@reviewPayloadBuilder.buildForReported(#reporterId, #reviewId, #request)}",
+        condition = "#reviewId != null"
+    )
+    public ReviewReportResponse reportNotify(
+            Long reporterId, Long reviewId, ReviewReportRequest request,
+            ReviewReportResponse response) {
+        return response;
+    }
+}
+```
+
+```java
+@Service
+@Transactional
+public class ProductNotifyOnService {
+
+    @NotifyOns({
+        @NotifyOn(type = "OPERATION", subType = "PRODUCT_APPROVED",
+                  payload = "#{@productPayloadBuilder.buildForApproved(#id)}",
+                  condition = "#result != null && #result.serviceStatus.name() == 'APPROVED'"),
+        @NotifyOn(type = "OPERATION", subType = "PRODUCT_REJECTED",
+                  payload = "#{@productPayloadBuilder.buildForRejected(#id, #rejectionReason)}",
+                  condition = "#result != null && #result.serviceStatus.name() == 'REJECTED'")
+    })
+    public HospitalServiceDetailResponse statusChangeNotify(
+            Long id, String rejectionReason,
+            HospitalServiceDetailResponse response) {
+        return response;
+    }
+}
+```
+
+### 호출 패턴
+
+Controller 또는 UseCase에서 비즈니스 로직 실행 후, NotifyOnService를 호출한다.
+
+```java
+// UseCase 또는 Controller에서
+@Service
+@RequiredArgsConstructor
+public class CreateOrderUseCaseImpl implements CreateOrderUseCase {
+    private final OrderService orderService;
+    private final EsimNotifyOnService esimNotifyOnService;
+
+    @Override
+    public CreateOrderResponse execute(CreateOrderCommand command) {
+        // 1. 비즈니스 로직 실행
+        CreateOrderInternalResponse result = orderService.createOrder(command);
+
+        // 2. 워크플로우 트리거 (NotifyOnService에 결과 전달)
+        esimNotifyOnService.createOrderNotify(command.toRequest(), command.getUserId(), result);
+
+        return CreateOrderResponse.from(result);
     }
 }
 ```
@@ -289,27 +355,31 @@ public class MyDomainPayloadBuilder {
             FcmRouteInfo.of("/my-domain/detail", result.getId())
         );
     }
-}
 
-// Step 4: @NotifyOn에서 사용
-@NotifyOn(
-    type = "MY_DOMAIN", subType = "CREATED",
-    payload = "#{@myDomainPayloadBuilder.buildForCreated(#result)}",
-    condition = "#result != null && @myDomainPayloadBuilder.canNotify(#result)"
-)
-public MyDomain create(MyDomainRequest request) { ... }
+    public boolean canNotify(MyDomain result) {
+        return result != null && result.getId() != null;
+    }
+}
 ```
 
 ### 처리 흐름
 
 ```
-메서드 실행 완료 → NotificationAspect (@AfterReturning)
+비즈니스 로직 실행 → {Domain}NotifyOnService 호출 (결과 전달)
+  → NotifyOnService 메서드 리턴 → NotificationAspect (@AfterReturning)
   → SpEL condition 평가 (false면 스킵)
   → SpEL payload 추출 (PayloadBuilder 호출)
-  → WorkflowNotificationEvent 발행
+  → WorkflowNotificationEvent 발행 (type + subType = 워크플로우 트리거 키)
   → WorkflowNotificationEventListener (AFTER_COMMIT, @Async)
-  → 워크플로우 엔진이 알림 채널 라우팅 (FCM, 카카오, 이메일 등)
+  → 워크플로우 엔진이 type+subType으로 등록된 채널/템플릿 조회 후 발송
 ```
+
+### 신규 도메인 알림 추가 체크리스트
+
+1. `{Domain}NotificationPayload` record 생성
+2. `{Domain}PayloadBuilder` @Component 생성
+3. **`{Domain}NotifyOnService`** @Service 생성 — `@NotifyOn`은 여기에만
+4. Controller 또는 UseCase에서 비즈니스 로직 실행 후 `NotifyOnService` 호출
 
 ---
 
@@ -410,7 +480,7 @@ PaginationResponse pagination = PaginationResponse.of(currentPage, pageSize, tot
 
 ## 7. 컨트롤러 작성 패턴 (종합)
 
-**@NotifyOn은 반드시 @Transactional 서비스에서 사용** (컨트롤러 직접 사용 금지).
+**@NotifyOn은 반드시 `{Domain}NotifyOnService`에서만 사용** (UseCase, Service, Controller 직접 사용 금지).
 
 ```java
 @ApiResponseWrapper
