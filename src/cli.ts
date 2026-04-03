@@ -14,6 +14,7 @@ program
   .command('add <source>')
   .description('Install skills from a GitHub repository or local path')
   .option('--skill <name>', 'Install specific skill')
+  .option('--all', 'Install all skills')
   .option('-y, --yes', 'Skip all prompts')
   .option('-g, --global', 'Install globally')
   .option('--copy', 'Use copy instead of symlink')

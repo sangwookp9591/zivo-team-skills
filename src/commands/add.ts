@@ -10,10 +10,12 @@ import { loadConfig } from '../core/config.js';
 import { detectInstalledAdapters, getAllAdapters } from '../adapters/index.js';
 import { assertSafeSkillName } from '../core/validators.js';
 import { verifyTeamCode } from '../core/auth.js';
+import { printBanner } from '../ui/banner.js';
 import type { AgentAdapter } from '../types/index.js';
 
 export interface AddOptions {
   skill?: string;
+  all?: boolean;
   yes?: boolean;
   global?: boolean;
   copy?: boolean;
@@ -41,6 +43,7 @@ function getLockPath(scope: 'project' | 'global'): string {
  * addCommand — `zivo-skills add <source>` 전체 플로우
  */
 export async function addCommand(source: string, options: AddOptions): Promise<void> {
+  printBanner();
   p.intro('zivo-skills');
 
   // ── 0. 팀 코드 인증 ──────────────────────────────────────────────────────
@@ -90,32 +93,38 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
     const skillNames = Array.from(skillsMap.keys());
 
     // ── 3. 스킬 선택 ──────────────────────────────────────────────────────────
-    let selectedSkillName: string;
+    let selectedSkillNames: string[];
 
-    if (options.skill) {
+    if (options.all) {
+      selectedSkillNames = skillNames;
+      p.log.info(`Selected all ${skillNames.length} skills: ${skillNames.join(', ')}`);
+    } else if (options.skill) {
       if (!skillsMap.has(options.skill)) {
         p.cancel(
           `Skill "${options.skill}" not found. Available: ${skillNames.join(', ')}`,
         );
         process.exit(1);
       }
-      selectedSkillName = options.skill;
+      selectedSkillNames = [options.skill];
     } else if (skillNames.length === 1) {
-      selectedSkillName = skillNames[0]!;
+      selectedSkillNames = [skillNames[0]!];
     } else if (options.yes) {
-      // --yes: 첫 번째 스킬 (또는 전부 설치하려면 별도 루프지만 현재 단일 선택)
-      selectedSkillName = skillNames[0]!;
+      selectedSkillNames = [skillNames[0]!];
     } else {
-      const selected = await p.select({
-        message: 'Select a skill to install:',
-        options: skillNames.map((name) => {
-          const skill = skillsMap.get(name)!;
-          return {
-            value: name,
-            label: name,
-            hint: skill.frontmatter.description,
-          };
-        }),
+      const selected = await p.multiselect({
+        message: `Found ${skillNames.length} skills. Select skills to install:`,
+        options: [
+          { value: '__all__', label: 'All skills', hint: `Install all ${skillNames.length} skills` },
+          ...skillNames.map((name) => {
+            const skill = skillsMap.get(name)!;
+            return {
+              value: name,
+              label: name,
+              hint: skill.frontmatter.description,
+            };
+          }),
+        ],
+        required: true,
       });
 
       if (p.isCancel(selected)) {
@@ -123,18 +132,19 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
         process.exit(0);
       }
 
-      selectedSkillName = selected as string;
+      const chosen = selected as string[];
+      selectedSkillNames = chosen.includes('__all__') ? skillNames : chosen;
     }
 
     // Path Traversal 방어: 선택된 스킬 이름 검증
-    try {
-      assertSafeSkillName(selectedSkillName);
-    } catch (err) {
-      p.cancel((err as Error).message);
-      process.exit(1);
-    }
-
-    const selectedSkill = skillsMap.get(selectedSkillName)!;
+    for (const name of selectedSkillNames) {
+      try {
+        assertSafeSkillName(name);
+      } catch (err) {
+        p.cancel((err as Error).message);
+        process.exit(1);
+      }
+    };
 
     // ── 4. 어댑터 감지 ────────────────────────────────────────────────────────
     const detectedAdapters = await detectInstalledAdapters();
@@ -216,110 +226,117 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
       method = methodResult as 'symlink' | 'copy';
     }
 
-    // ── 8. 충돌 감지 ──────────────────────────────────────────────────────────
-    const conflicts = await detectSymlinkConflicts(selectedSkillName);
+    // ── 8~9. 스킬별 충돌 감지 + 설치 실행 ─────────────────────────────────────
+    const lockPath = getLockPath(scope);
+    let installedCount = 0;
+    let skippedCount = 0;
 
-    if (conflicts.length > 0) {
-      if (options.force) {
-        // --force: 자동 덮어쓰기
-        await removeConflicts(conflicts);
-      } else if (options.yes) {
-        // --yes: skip (아무것도 안 함)
-        p.log.warn(
-          `Conflicts detected (skipped): ${conflicts.join(', ')}`,
-        );
-      } else {
-        p.log.warn(`Conflicts detected:\n  ${conflicts.join('\n  ')}`);
+    for (const skillName of selectedSkillNames) {
+      const selectedSkill = skillsMap.get(skillName)!;
 
-        const conflictAction = await p.select({
-          message: 'How to handle conflicts?',
-          options: [
-            { value: 'overwrite', label: 'overwrite', hint: 'Remove existing and reinstall' },
-            { value: 'skip', label: 'skip', hint: 'Keep existing, skip installation' },
-            { value: 'rename', label: 'rename', hint: 'Install with a suffix (_new)' },
-          ],
-        });
+      // ── 8. 충돌 감지 ────────────────────────────────────────────────────────
+      const conflicts = await detectSymlinkConflicts(skillName);
 
-        if (p.isCancel(conflictAction)) {
-          p.cancel('Installation cancelled.');
-          process.exit(0);
-        }
-
-        const action = conflictAction as 'overwrite' | 'skip' | 'rename';
-
-        if (action === 'skip') {
-          p.outro(`Skipped installation of ${selectedSkillName} due to conflicts.`);
-          return;
-        }
-
-        if (action === 'overwrite') {
+      if (conflicts.length > 0) {
+        if (options.force || options.all) {
           await removeConflicts(conflicts);
-        }
-        // 'rename' — installSkill은 suffix 없이 설치되지만 충돌 파일은 유지됨
-        // adapter.install 자체가 덮어쓰지 않으므로 결과적으로 rename suffix 역할
-      }
-    }
+        } else if (options.yes) {
+          p.log.warn(`Conflicts detected (skipped): ${conflicts.join(', ')}`);
+          skippedCount++;
+          continue;
+        } else {
+          p.log.warn(`[${skillName}] Conflicts detected:\n  ${conflicts.join('\n  ')}`);
 
-    // ── 9. 설치 실행 ──────────────────────────────────────────────────────────
-    const spinner = p.spinner();
-    spinner.start('Installing...');
+          const conflictAction = await p.select({
+            message: 'How to handle conflicts?',
+            options: [
+              { value: 'overwrite', label: 'overwrite', hint: 'Remove existing and reinstall' },
+              { value: 'skip', label: 'skip', hint: 'Keep existing, skip installation' },
+              { value: 'rename', label: 'rename', hint: 'Install with a suffix (_new)' },
+            ],
+          });
 
-    let result;
-    try {
-      // GitHub clone인 경우, 스킬 파일을 영구 경로에 복사 (임시 디렉토리 삭제 후에도 유지)
-      let skillSourcePath = repoDir;
-      if (isTemp) {
-        const permanentDir = path.join(
-          os.homedir(), '.zivo-skills', 'store', selectedSkillName,
-        );
-        await fs.mkdir(permanentDir, { recursive: true });
-        // SKILL.md 복사
-        const srcSkillDir = path.join(repoDir, 'skills', selectedSkillName);
-        const rootSkillMd = path.join(repoDir, 'SKILL.md');
-        try {
-          await fs.access(srcSkillDir);
-          // skills/{name}/ 디렉토리가 있는 경우
-          const files = await fs.readdir(srcSkillDir);
-          for (const file of files) {
-            await fs.copyFile(path.join(srcSkillDir, file), path.join(permanentDir, file));
+          if (p.isCancel(conflictAction)) {
+            p.cancel('Installation cancelled.');
+            process.exit(0);
           }
-        } catch {
-          // 루트 SKILL.md만 있는 경우
+
+          const action = conflictAction as 'overwrite' | 'skip' | 'rename';
+
+          if (action === 'skip') {
+            skippedCount++;
+            continue;
+          }
+
+          if (action === 'overwrite') {
+            await removeConflicts(conflicts);
+          }
+        }
+      }
+
+      // ── 9. 설치 실행 ────────────────────────────────────────────────────────
+      const spinner = p.spinner();
+      spinner.start(selectedSkillNames.length > 1
+        ? `Installing ${skillName} (${installedCount + skippedCount + 1}/${selectedSkillNames.length})...`
+        : 'Installing...');
+
+      try {
+        let skillSourcePath = repoDir;
+        if (isTemp) {
+          const permanentDir = path.join(
+            os.homedir(), '.zivo-skills', 'store', skillName,
+          );
+          await fs.mkdir(permanentDir, { recursive: true });
+          const srcSkillDir = path.join(repoDir, 'skills', skillName);
+          const rootSkillMd = path.join(repoDir, 'SKILL.md');
           try {
-            await fs.copyFile(rootSkillMd, path.join(permanentDir, 'SKILL.md'));
+            await fs.access(srcSkillDir);
+            const files = await fs.readdir(srcSkillDir);
+            for (const file of files) {
+              await fs.copyFile(path.join(srcSkillDir, file), path.join(permanentDir, file));
+            }
           } catch {
-            await fs.copyFile(
-              path.join(repoDir, 'skills', selectedSkillName, 'SKILL.md'),
-              path.join(permanentDir, 'SKILL.md'),
-            );
+            try {
+              await fs.copyFile(rootSkillMd, path.join(permanentDir, 'SKILL.md'));
+            } catch {
+              await fs.copyFile(
+                path.join(repoDir, 'skills', skillName, 'SKILL.md'),
+                path.join(permanentDir, 'SKILL.md'),
+              );
+            }
           }
+          skillSourcePath = permanentDir;
         }
-        skillSourcePath = permanentDir;
+
+        await installSkill(
+          selectedSkill,
+          skillSourcePath,
+          {
+            method,
+            scope,
+            force: options.force ?? false,
+            adapters: selectedAdapters,
+          },
+          lockPath,
+        );
+
+        installedCount++;
+        spinner.stop(`Installed ${skillName}`);
+      } catch (err) {
+        spinner.stop(`Failed to install ${skillName}: ${(err as Error).message}`);
       }
-      const lockPath = getLockPath(scope);
-
-      result = await installSkill(
-        selectedSkill,
-        skillSourcePath,
-        {
-          method,
-          scope,
-          force: options.force ?? false,
-          adapters: selectedAdapters,
-        },
-        lockPath,
-      );
-
-      spinner.stop('Installation complete.');
-    } catch (err) {
-      spinner.stop('Installation failed.');
-      p.cancel((err as Error).message);
-      process.exit(1);
     }
 
-    p.outro(
-      `Installed ${result.skillName} to ${result.adapters.length} agent${result.adapters.length !== 1 ? 's' : ''}`,
-    );
+    // ── 결과 요약 ─────────────────────────────────────────────────────────────
+    const agentCount = selectedAdapters.length;
+    const agentSuffix = agentCount !== 1 ? 's' : '';
+    if (selectedSkillNames.length === 1) {
+      p.outro(`Installed ${selectedSkillNames[0]} to ${agentCount} agent${agentSuffix}`);
+    } else {
+      const parts = [`Installed ${installedCount}/${selectedSkillNames.length} skills to ${agentCount} agent${agentSuffix}`];
+      if (skippedCount > 0) parts.push(`(${skippedCount} skipped)`);
+      p.outro(parts.join(' '));
+    }
   } finally {
     // 임시 클론 디렉토리 정리
     if (isTemp && repoDir) {
