@@ -266,8 +266,36 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
 
     let result;
     try {
-      // 스킬 소스 경로: repoDir 내에서 스킬 SKILL.md 위치의 부모 디렉토리
-      const skillSourcePath = repoDir;
+      // GitHub clone인 경우, 스킬 파일을 영구 경로에 복사 (임시 디렉토리 삭제 후에도 유지)
+      let skillSourcePath = repoDir;
+      if (isTemp) {
+        const permanentDir = path.join(
+          os.homedir(), '.zivo-skills', 'store', selectedSkillName,
+        );
+        await fs.mkdir(permanentDir, { recursive: true });
+        // SKILL.md 복사
+        const srcSkillDir = path.join(repoDir, 'skills', selectedSkillName);
+        const rootSkillMd = path.join(repoDir, 'SKILL.md');
+        try {
+          await fs.access(srcSkillDir);
+          // skills/{name}/ 디렉토리가 있는 경우
+          const files = await fs.readdir(srcSkillDir);
+          for (const file of files) {
+            await fs.copyFile(path.join(srcSkillDir, file), path.join(permanentDir, file));
+          }
+        } catch {
+          // 루트 SKILL.md만 있는 경우
+          try {
+            await fs.copyFile(rootSkillMd, path.join(permanentDir, 'SKILL.md'));
+          } catch {
+            await fs.copyFile(
+              path.join(repoDir, 'skills', selectedSkillName, 'SKILL.md'),
+              path.join(permanentDir, 'SKILL.md'),
+            );
+          }
+        }
+        skillSourcePath = permanentDir;
+      }
       const lockPath = getLockPath(scope);
 
       result = await installSkill(
