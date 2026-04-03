@@ -1,0 +1,50 @@
+{
+  "name": "zivo-skills",
+  "version": "0.1.0",
+  "description": "ZIVO Team Skills CLI - manage AI agent skills across Claude Code, Codex, Gemini, Cursor",
+  "type": "module",
+  "bin": {
+    "zivo-skills": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "registry"
+  ],
+  "keywords": [
+    "ai",
+    "skills",
+    "claude",
+    "codex",
+    "gemini",
+    "cursor",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sangwookp9591/zivo-team-skills.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.10.0",
+    "commander": "^13.0.0",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+skills/
+.aing/
+.claude/
+.codex/
+.gemini/
+.cursor/
+skills-lock.json
