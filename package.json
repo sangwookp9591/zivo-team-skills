@@ -1,6 +1,6 @@
 {
   "name": "zivo-skills",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ZIVO Team Skills CLI - manage AI agent skills across Claude Code, Codex, Gemini, Cursor",
   "type": "module",
   "bin": {
@@ -45,6 +45,8 @@
     "vitest": "^3.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
