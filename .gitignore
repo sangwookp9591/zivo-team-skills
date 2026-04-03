@@ -2,7 +2,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env
-skills/
+# 로컬 설치된 스킬 (프로젝트 스코프)
+# skills/ 디렉토리는 레지스트리이므로 커밋 대상
 .aing/
 .claude/
 .codex/
