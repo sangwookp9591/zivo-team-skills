@@ -7,7 +7,7 @@ ZIVO 팀 전용 AI 에이전트 스킬 관리 CLI.
 ### npx (권장)
 
 ```bash
-npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills --code ZIVOTEAM01
+npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills --code {code}
 ```
 
 ### Git Clone
@@ -23,10 +23,10 @@ pnpm build
 
 # 3. 로컬 경로로 스킬 설치 (프로젝트 디렉토리에서 실행)
 cd /path/to/your-project
-npx zivo-skills add /path/to/zivo-team-skills --code ZIVOTEAM01
+npx zivo-skills add /path/to/zivo-team-skills --code {code}
 
 # 또는 전체 스킬 한번에 설치
-npx zivo-skills add /path/to/zivo-team-skills --all --code ZIVOTEAM01
+npx zivo-skills add /path/to/zivo-team-skills --all --code {code}
 ```
 
 ## 사용법
@@ -35,21 +35,21 @@ npx zivo-skills add /path/to/zivo-team-skills --all --code ZIVOTEAM01
 
 ```bash
 npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
-  --skill zivo-back-arch --code ZIVOTEAM01
+  --skill zivo-back-arch --code {code}
 ```
 
 ### 전체 스킬 설치
 
 ```bash
 npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
-  --all --code ZIVOTEAM01
+  --all --code {code}
 ```
 
 ### 프롬프트 없이 설치
 
 ```bash
 npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
-  --all -y --code ZIVOTEAM01
+  --all -y --code {code}
 ```
 
 ### 기타 명령어
