@@ -6,6 +6,7 @@ dist/
 # skills/ 디렉토리는 레지스트리이므로 커밋 대상
 .aing/
 .claude/
+.omc/
 .codex/
 .gemini/
 .cursor/
