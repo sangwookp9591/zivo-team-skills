@@ -73,10 +73,13 @@ npx zivo-skills remove <skill-name>
 
 ## 스킬 목록
 
-| 스킬             | 설명                                                                                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `zivo-back-arch` | Spring Boot + MyBatis/JPA, DDD/Hexagonal 아키텍처 가이드. 커스텀 어노테이션(@NotifyOn, @ApiResponseWrapper, @Loggable), TDD, 보안 등 백엔드 전반 |
-| `zivo-back-gof`  | Spring Boot GoF 디자인 패턴 가이드. 상황별 패턴 추천, 오버엔지니어링 판단, DDD 계층 내 패턴 적용                                                 |
+| 스킬                    | 설명                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `zivo-back-arch`        | Spring Boot + MyBatis/JPA, DDD/Hexagonal 아키텍처 가이드. 커스텀 어노테이션(@NotifyOn, @ApiResponseWrapper, @Loggable), TDD, 보안 등 백엔드 전반 |
+| `zivo-back-gof`         | Spring Boot GoF 디자인 패턴 가이드. 상황별 패턴 추천, 오버엔지니어링 판단, DDD 계층 내 패턴 적용                                                 |
+| `zivo-admin-new-page`   | ZIVO_ADMIN 신규 페이지 추가 가이드. 리스트/상세 페이지 보일러플레이트, DraggableLayout/SyncNavLayout 레이아웃 패턴, API 서비스, TanStack Query hooks, StyleX 스타일, 라우트 등록, Footer 중복 방지 |
+| `zivo-admin-workspace`  | ZIVO_ADMIN 공유 컴포넌트/훅/타입 가이드. shared/ui 컴포넌트 생성 규칙, 커스텀 훅 작성, 타입 정의 패턴, 프로젝트 구조 맵                           |
+| `zivo-stylex-guide`     | StyleX 지뢰밭 가이드. 토큰 사용법(color/space/fontSize/font/radius), 반응형 로컬 상수 패턴, 자주 발생하는 에러와 해결법(BAD/GOOD 비교)            |
 
 ## 옵션
 
