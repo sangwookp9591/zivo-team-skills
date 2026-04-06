@@ -14,6 +14,8 @@ triggers:
   - java
   - REST API
   - controller
+  - NotificationChannel
+  - 알림 채널
   - service
   - repository
 metadata:
@@ -44,6 +46,7 @@ Spring Boot + MyBatis/JPA 기반 백엔드. 기존 서비스는 전통적 계층
 | Controller + Request/Response DTO 생성 | `references/controller.java.md` |
 | ErrorCode enum 생성 | `references/error-code.java.md` |
 | @NotifyOn 워크플로우 트리거 추가 | `references/notify-on.java.md` |
+| 알림 채널 추가 (NotificationChannel) | `references/notification-channel.java.md` |
 | 테스트 코드 작성 (TDD) | `references/tdd-templates.java.md` |
 | Spring Boot 일반 모범 사례 (DI, 설정, 검증, 보안) | `references/springboot-best-practices.md` |
 
