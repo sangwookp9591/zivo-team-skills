@@ -80,6 +80,7 @@ npx zivo-skills remove <skill-name>
 | `zivo-admin-new-page`   | ZIVO_ADMIN 신규 페이지 추가 가이드. 리스트/상세 페이지 보일러플레이트, DraggableLayout/SyncNavLayout 레이아웃 패턴, API 서비스, TanStack Query hooks, StyleX 스타일, 라우트 등록, Footer 중복 방지 |
 | `zivo-admin-workspace`  | ZIVO_ADMIN 공유 컴포넌트/훅/타입 가이드. shared/ui 컴포넌트 생성 규칙, 커스텀 훅 작성, 타입 정의 패턴, 프로젝트 구조 맵                           |
 | `zivo-stylex-guide`     | StyleX 지뢰밭 가이드. 토큰 사용법(color/space/fontSize/font/radius), 반응형 로컬 상수 패턴, 자주 발생하는 에러와 해결법(BAD/GOOD 비교)            |
+| `zivo-admin-migrate-design` | ZIVO_DESIGN/admin/ HTML → ZIVO_ADMIN React+StyleX 마이그레이션. 90+ 공통 컴포넌트 매핑, CSS→StyleX 토큰 변환, 레이아웃 결정 플로우, 4가지 변환 템플릿, 갭 분석+새 컴포넌트 제안, 7카테고리 검증 |
 
 ## 옵션
 
