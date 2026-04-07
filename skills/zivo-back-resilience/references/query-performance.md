@@ -117,6 +117,8 @@ CREATE INDEX idx_hospitals_location ON public.zivo_hospitals USING GIST (locatio
 
 ## 4. N+1 방지
 
+> **N+1 감지, 측정, bulk 전환 가이드는 `references/n-plus-one-bulk.md` 참조**
+
 ### MyBatis에서 N+1 패턴
 
 ```xml
