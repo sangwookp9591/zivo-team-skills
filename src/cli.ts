@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { addCommand } from './commands/add.js';
+import { findCommand } from './commands/find.js';
 import { listCommand } from './commands/list.js';
 import { removeCommand } from './commands/remove.js';
 
@@ -22,6 +23,12 @@ program
   .option('--force', 'Force overwrite on conflicts')
   .option('--code <code>', 'Team authentication code')
   .action(addCommand);
+
+program
+  .command('find')
+  .description('Browse and install skills from registry')
+  .option('--code <code>', 'Team authentication code')
+  .action(findCommand);
 
 program
   .command('list')
