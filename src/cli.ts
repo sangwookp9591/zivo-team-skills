@@ -28,6 +28,7 @@ program
   .command('find')
   .description('Browse and install skills from registry')
   .option('--code <code>', 'Team authentication code')
+  .option('-y, --yes', 'Skip prompts (auto-detect agents, project scope, symlink)')
   .action(findCommand);
 
 program
