@@ -40,6 +40,9 @@ function isSkillName(source: string): boolean {
   return !isGitHubUrl(source) && !isLocalPath(source) && /^[a-zA-Z0-9_-]+$/.test(source);
 }
 
+/** 기본 레지스트리 URL — config 파일 캐시와 무관하게 항상 사용 가능 */
+const DEFAULT_REGISTRY_URL = 'https://github.com/sangwookp9591/zivo-team-skills';
+
 function getLockPath(scope: 'project' | 'global'): string {
   if (scope === 'global') {
     return path.join(os.homedir(), '.zivo-skills', 'skills-lock.json');
@@ -48,7 +51,13 @@ function getLockPath(scope: 'project' | 'global'): string {
 }
 
 /**
- * addCommand — `zivo-skills add <source>` 전체 플로우
+ * addCommand — `zivo-skills add [source]` 전체 플로우
+ *
+ * source 해석 우선순위:
+ * 1. GitHub URL → 그대로 clone
+ * 2. 로컬 경로 (/, ./, ../, ~) → 로컬에서 읽기
+ * 3. 스킬 이름 (영문/숫자/하이픈) → --skill로 이동, 기본 registry clone
+ * 4. 없음 → 기본 registry clone
  */
 export async function addCommand(source: string | undefined, options: AddOptions): Promise<void> {
   printBanner();
@@ -69,14 +78,9 @@ export async function addCommand(source: string | undefined, options: AddOptions
     source = undefined; // 아래에서 기본 registry 사용
   }
 
-  // source가 없으면 config의 기본 registryUrl 사용
+  // source가 없으면 기본 registry URL 사용 (config 캐시 무시)
   if (!source) {
-    if (!options.skill && !options.all) {
-      // 스킬 이름도 없고 --all도 아니면 대화형으로 진행
-      source = `https://${config.registryUrl}`;
-    } else {
-      source = `https://${config.registryUrl}`;
-    }
+    source = DEFAULT_REGISTRY_URL;
   }
 
   try {
