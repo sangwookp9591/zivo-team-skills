@@ -11,7 +11,7 @@ export interface ZivoConfig {
 }
 
 const DEFAULT_CONFIG: ZivoConfig = {
-  registryUrl: 'github.com/zivo-team/skills',
+  registryUrl: 'github.com/sangwookp9591/zivo-team-skills',
   cacheTTL: 86_400_000,
   defaultScope: 'project',
   defaultMethod: 'symlink',

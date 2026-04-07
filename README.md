@@ -4,52 +4,32 @@ ZIVO 팀 전용 AI 에이전트 스킬 관리 CLI.
 
 ## 설치
 
-### npx (권장)
+### 스킬 이름으로 설치 (권장)
 
 ```bash
-npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills --code {code}
+# 특정 스킬 설치
+npx zivo-skills add zivo-back-arch --code {code}
+
+# 전체 스킬 설치
+npx zivo-skills add --all --code {code}
+
+# 프롬프트 없이 설치
+npx zivo-skills add zivo-back-resilience -y --code {code}
 ```
 
-### Git Clone
-
-```bash
-# 1. 레포지토리 클론
-git clone https://github.com/sangwookp9591/zivo-team-skills.git
-cd zivo-team-skills
-
-# 2. 의존성 설치 및 빌드
-pnpm install
-pnpm build
-
-# 3. 로컬 경로로 스킬 설치 (프로젝트 디렉토리에서 실행)
-cd /path/to/your-project
-npx zivo-skills add /path/to/zivo-team-skills --code {code}
-
-# 또는 전체 스킬 한번에 설치
-npx zivo-skills add /path/to/zivo-team-skills --all --code {code}
-```
-
-## 사용법
-
-### 특정 스킬 설치
+### GitHub URL로 설치
 
 ```bash
 npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
   --skill zivo-back-arch --code {code}
 ```
 
-### 전체 스킬 설치
+### 로컬 경로로 설치 (개발용)
 
 ```bash
-npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
-  --all --code {code}
-```
-
-### 프롬프트 없이 설치
-
-```bash
-npx zivo-skills add https://github.com/sangwookp9591/zivo-team-skills \
-  --all -y --code {code}
+git clone https://github.com/sangwookp9591/zivo-team-skills.git
+cd /path/to/your-project
+npx zivo-skills add /path/to/zivo-team-skills --all --code {code}
 ```
 
 ### 기타 명령어
@@ -73,27 +53,43 @@ npx zivo-skills remove <skill-name>
 
 ## 스킬 목록
 
-| 스킬                    | 설명                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `zivo-back-arch`        | Spring Boot + MyBatis/JPA, DDD/Hexagonal 아키텍처 가이드. 커스텀 어노테이션(@NotifyOn, @ApiResponseWrapper, @Loggable), TDD, 보안 등 백엔드 전반 |
-| `zivo-back-gof`         | Spring Boot GoF 디자인 패턴 가이드. 상황별 패턴 추천, 오버엔지니어링 판단, DDD 계층 내 패턴 적용                                                 |
-| `zivo-admin-new-page`   | ZIVO_ADMIN 신규 페이지 추가 가이드. 리스트/상세 페이지 보일러플레이트, DraggableLayout/SyncNavLayout 레이아웃 패턴, API 서비스, TanStack Query hooks, StyleX 스타일, 라우트 등록, Footer 중복 방지 |
-| `zivo-admin-workspace`  | ZIVO_ADMIN 공유 컴포넌트/훅/타입 가이드. shared/ui 컴포넌트 생성 규칙, 커스텀 훅 작성, 타입 정의 패턴, 프로젝트 구조 맵                           |
-| `zivo-stylex-guide`     | StyleX 지뢰밭 가이드. 토큰 사용법(color/space/fontSize/font/radius), 반응형 로컬 상수 패턴, 자주 발생하는 에러와 해결법(BAD/GOOD 비교)            |
-| `zivo-admin-migrate-design` | ZIVO_DESIGN/admin/ HTML → ZIVO_ADMIN React+StyleX 마이그레이션. 90+ 공통 컴포넌트 매핑, CSS→StyleX 토큰 변환, 레이아웃 결정 플로우, 4가지 변환 템플릿, 갭 분석+새 컴포넌트 제안, 7카테고리 검증 |
+### Backend
+
+| 스킬 | 설명 |
+| ---- | ---- |
+| `zivo-back-arch` | Spring Boot + MyBatis/JPA, DDD/Hexagonal 아키텍처. @NotifyOn, @ApiResponseWrapper, @Loggable 등 커스텀 어노테이션, TDD, 보안 |
+| `zivo-back-gof` | Spring Boot GoF 디자인 패턴. 상황별 패턴 추천, 오버엔지니어링 판단, DDD 계층 내 패턴 적용 |
+| `zivo-back-resilience` | Backend Resilience & Performance Guard. 외부 API timeout, 커넥션 풀, N+1, circuit breaker, 캐시 전략, 502/500/timeout 디버깅 |
+
+### Frontend (Admin)
+
+| 스킬 | 설명 |
+| ---- | ---- |
+| `zivo-admin-new-page` | 신규 페이지 추가. 리스트/상세 보일러플레이트, 레이아웃 패턴, API 서비스, TanStack Query, StyleX |
+| `zivo-admin-workspace` | 공유 컴포넌트/훅/타입. shared/ui 생성 규칙, 커스텀 훅, 프로젝트 구조 맵 |
+| `zivo-admin-migrate-design` | HTML → React+StyleX 마이그레이션. 90+ 컴포넌트 매핑, CSS→StyleX 변환, 갭 분석 |
+| `zivo-stylex-guide` | StyleX 지뢰밭 가이드. 토큰, 반응형 로컬 상수 패턴, 에러 해결법 |
+
+### Flutter
+
+| 스킬 | 설명 |
+| ---- | ---- |
+| `zivo-flutter-arch` | Flutter 앱 아키텍처 |
+| `zivo-flutter-i18n` | Flutter 다국어 처리 |
+| `zivo-flutter-patterns` | Flutter 공통 패턴 |
 
 ## 옵션
 
-| 옵션             | 설명                   |
-| ---------------- | ---------------------- |
-| `--skill <name>` | 특정 스킬만 설치       |
-| `--all`          | 전체 스킬 설치         |
-| `--code <code>`  | 팀 인증 코드           |
-| `-y, --yes`      | 프롬프트 스킵          |
-| `-g, --global`   | 글로벌 설치            |
-| `--copy`         | symlink 대신 파일 복사 |
-| `--force`        | 충돌 시 강제 덮어쓰기  |
-| `--no-cache`     | 캐시 무시              |
+| 옵션 | 설명 |
+| ---- | ---- |
+| `--skill <name>` | 특정 스킬만 설치 |
+| `--all` | 전체 스킬 설치 |
+| `--code <code>` | 팀 인증 코드 |
+| `-y, --yes` | 프롬프트 스킵 |
+| `-g, --global` | 글로벌 설치 |
+| `--copy` | symlink 대신 파일 복사 |
+| `--force` | 충돌 시 강제 덮어쓰기 |
+| `--no-cache` | 캐시 무시 |
 
 ## 스킬 개발
 

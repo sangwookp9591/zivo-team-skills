@@ -11,8 +11,8 @@ program
   .version('0.1.0');
 
 program
-  .command('add <source>')
-  .description('Install skills from a GitHub repository or local path')
+  .command('add [source]')
+  .description('Install skills. Source can be: skill name, GitHub URL, or local path. If omitted with --skill, uses default registry.')
   .option('--skill <name>', 'Install specific skill')
   .option('--all', 'Install all skills')
   .option('-y, --yes', 'Skip all prompts')

@@ -32,6 +32,14 @@ function isGitHubUrl(source: string): boolean {
   );
 }
 
+function isLocalPath(source: string): boolean {
+  return source.startsWith('/') || source.startsWith('./') || source.startsWith('../') || source.startsWith('~');
+}
+
+function isSkillName(source: string): boolean {
+  return !isGitHubUrl(source) && !isLocalPath(source) && /^[a-zA-Z0-9_-]+$/.test(source);
+}
+
 function getLockPath(scope: 'project' | 'global'): string {
   if (scope === 'global') {
     return path.join(os.homedir(), '.zivo-skills', 'skills-lock.json');
@@ -42,7 +50,7 @@ function getLockPath(scope: 'project' | 'global'): string {
 /**
  * addCommand — `zivo-skills add <source>` 전체 플로우
  */
-export async function addCommand(source: string, options: AddOptions): Promise<void> {
+export async function addCommand(source: string | undefined, options: AddOptions): Promise<void> {
   printBanner();
   p.intro('zivo-skills');
 
@@ -52,6 +60,24 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
   const config = await loadConfig();
   let repoDir: string | null = null;
   let isTemp = false;
+
+  // source가 스킬 이름이면 --skill로 이동하고 source를 기본 registry로 설정
+  if (source && isSkillName(source)) {
+    if (!options.skill) {
+      options.skill = source;
+    }
+    source = undefined; // 아래에서 기본 registry 사용
+  }
+
+  // source가 없으면 config의 기본 registryUrl 사용
+  if (!source) {
+    if (!options.skill && !options.all) {
+      // 스킬 이름도 없고 --all도 아니면 대화형으로 진행
+      source = `https://${config.registryUrl}`;
+    } else {
+      source = `https://${config.registryUrl}`;
+    }
+  }
 
   try {
     // ── 1. source 파싱 ────────────────────────────────────────────────────────
@@ -71,13 +97,31 @@ export async function addCommand(source: string, options: AddOptions): Promise<v
         p.cancel((err as Error).message);
         process.exit(1);
       }
-    } else {
+    } else if (isLocalPath(source)) {
       // 로컬 경로
       repoDir = path.resolve(source);
       try {
         await fs.access(repoDir);
       } catch {
         p.cancel(`Local path not found: ${repoDir}`);
+        process.exit(1);
+      }
+    } else {
+      // 그 외 — GitHub URL로 간주
+      const fullUrl = source.startsWith('http') ? source : `https://${source}`;
+      const spinner = p.spinner();
+      spinner.start('Repository cloning...');
+      try {
+        repoDir = await cloneRegistry({
+          registryUrl: fullUrl,
+          cachePath: path.join(os.homedir(), '.zivo-skills', 'cache'),
+          cacheTTL: options.cache === false ? 0 : config.cacheTTL,
+        });
+        isTemp = true;
+        spinner.stop('Repository cloned.');
+      } catch (err) {
+        spinner.stop('Clone failed.');
+        p.cancel((err as Error).message);
         process.exit(1);
       }
     }
